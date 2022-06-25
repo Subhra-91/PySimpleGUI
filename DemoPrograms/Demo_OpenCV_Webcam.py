@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+from time import time
 import PySimpleGUI as sg
 import cv2
 import numpy as np
+from pyzbar.pyzbar import decode
+import time
 
 """
 Demo program that displays a webcam using OpenCV
@@ -13,11 +16,10 @@ def main():
     sg.theme('Black')
 
     # define the window layout
-    layout = [[sg.Text('OpenCV Demo', size=(40, 1), justification='center', font='Helvetica 20')],
+    layout = [[sg.Text('QRator', size=(40, 1), justification='center', font='Helvetica 20')],
               [sg.Image(filename='', key='image')],
-              [sg.Button('Record', size=(10, 1), font='Helvetica 14'),
-               sg.Button('Stop', size=(10, 1), font='Any 14'),
-               sg.Button('Exit', size=(10, 1), font='Helvetica 14'), ]]
+              [
+               sg.Text('Scanning...', size=(10, 1), font='Helvetica 14',key='status'), ]]
 
     # create the window and show it without the plot
     window = sg.Window('Demo Application - OpenCV Integration',
@@ -27,23 +29,33 @@ def main():
     cap = cv2.VideoCapture(0)
     recording = False
 
+    def verify(qr):
+        return True
+
+    def qrfound(qr):
+        if verify(qr):
+            window.Element('status').update('Verified')
+            
+        print(qr)
+
+    def decoder(img):
+        gray = cv2.cvtColor(img,0)
+        qr = decode(gray)
+        return qr
     while True:
-        event, values = window.read(timeout=20)
+        
+        event, values = window.read(timeout=10)
+
         if event == 'Exit' or event == sg.WIN_CLOSED:
             return
-
-        elif event == 'Record':
-            recording = True
-
-        elif event == 'Stop':
-            recording = False
-            img = np.full((480, 640), 255)
-            # this is faster, shorter and needs less includes
-            imgbytes = cv2.imencode('.png', img)[1].tobytes()
-            window['image'].update(data=imgbytes)
-
+        recording = True
         if recording:
             ret, frame = cap.read()
+            qr = decoder(frame)
+            if len(qr) == 0:
+                pass
+            else:
+                qrfound(qr[0].data.decode('utf-8'))
             imgbytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
             window['image'].update(data=imgbytes)
 
